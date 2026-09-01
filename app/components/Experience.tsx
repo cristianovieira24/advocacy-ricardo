@@ -5,57 +5,65 @@ import { useEffect } from "react";
 export function Experience() {
   useEffect(() => {
     const root = document.documentElement;
-    const scenes = Array.from(document.querySelectorAll<HTMLElement>("[data-scroll-scene]"));
+    root.dataset.motionReady = "true";
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const narrative = document.querySelector<HTMLElement>(".narrative-scene");
+    const counter = document.querySelector<HTMLElement>("[data-counter]");
+    const parallaxMedia = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax-media]"));
+    const teamMedia = document.querySelector<HTMLElement>("[data-team-media]");
     let frame = 0;
 
     const clamp = (value: number) => Math.min(1, Math.max(0, value));
+    const bell = (progress: number, center: number, radius: number) =>
+      clamp(1 - Math.abs(progress - center) / radius);
+
     const update = () => {
       frame = 0;
       const viewport = window.innerHeight;
       const maxScroll = Math.max(1, document.documentElement.scrollHeight - viewport);
+      const isReduced = reducedMotion.matches;
+
+      root.dataset.reducedMotion = isReduced ? "true" : "false";
       root.style.setProperty("--page-progress", String(clamp(window.scrollY / maxScroll)));
 
       const hero = document.querySelector<HTMLElement>("[data-hero]");
       if (hero) {
         const rect = hero.getBoundingClientRect();
-        const progress = clamp(-rect.top / Math.max(1, rect.height * 0.72));
+        const progress = isReduced ? 0 : clamp(-rect.top / Math.max(1, rect.height));
         root.style.setProperty("--hero-progress", String(progress));
-        root.style.setProperty("--hero-a-x", `${-progress * 26}px`);
-        root.style.setProperty("--hero-a-y", `${progress * 32}px`);
-        root.style.setProperty("--hero-a-r", `${7 - progress * 5}deg`);
-        root.style.setProperty("--hero-b-x", `${progress * 34}px`);
-        root.style.setProperty("--hero-b-y", `${-progress * 22}px`);
-        root.style.setProperty("--hero-b-r", `${-6 + progress * 4}deg`);
-        root.style.setProperty("--hero-c-x", `${progress * 18}px`);
-        root.style.setProperty("--hero-c-y", `${progress * 14}px`);
-        root.style.setProperty("--hero-c-r", `${3 - progress * 2}deg`);
-        root.style.setProperty("--hero-line-progress", String(1 - Math.min(1, progress * 2.2)));
+        root.style.setProperty("--hero-media-y", `${progress * 10}vh`);
+        root.style.setProperty("--hero-copy-y", `${progress * -6}vh`);
       }
 
-      scenes.forEach((scene) => {
-        const rect = scene.getBoundingClientRect();
-        const distance = Math.max(1, rect.height - viewport);
-        const progress = clamp(-rect.top / distance);
-        scene.style.setProperty("--scene-progress", String(progress));
-
-        if (scene.classList.contains("alignment-scene")) {
-          const eased = 1 - Math.pow(1 - progress, 3);
-          scene.style.setProperty("--align-one", `${-18 + eased * 18}vw`);
-          scene.style.setProperty("--align-two", `${16 - eased * 16}vw`);
-          scene.style.setProperty("--align-three", `${-10 + eased * 10}vw`);
-        }
-
-        if (scene.classList.contains("reading-scene")) {
-          const converge = Math.sin(progress * Math.PI * 0.86);
-          scene.style.setProperty("--read-a-x", `${-80 + converge * 80}px`);
-          scene.style.setProperty("--read-a-y", `${80 - converge * 42}px`);
-          scene.style.setProperty("--read-b-x", `${90 - converge * 90}px`);
-          scene.style.setProperty("--read-b-y", `${converge * 22}px`);
-          scene.style.setProperty("--read-c-x", `${-45 + converge * 45}px`);
-          scene.style.setProperty("--read-c-y", `${-70 + converge * 70}px`);
-          scene.style.setProperty("--read-axis", String(Math.max(0.1, converge)));
-        }
+      parallaxMedia.forEach((element) => {
+        const rect = element.getBoundingClientRect();
+        const progress = clamp((viewport - rect.top) / Math.max(1, viewport + rect.height));
+        element.style.setProperty("--media-shift", isReduced ? "0px" : `${(progress - 0.5) * 90}px`);
       });
+
+      if (narrative) {
+        const rect = narrative.getBoundingClientRect();
+        const distance = Math.max(1, rect.height - viewport);
+        const progress = isReduced ? 0 : clamp(-rect.top / distance);
+        const first = progress < 0.18 ? 1 : bell(progress, 0.12, 0.28);
+        const second = bell(progress, 0.5, 0.3);
+        const third = progress > 0.82 ? 1 : bell(progress, 0.86, 0.28);
+        const active = progress < 0.33 ? "01" : progress < 0.68 ? "02" : "03";
+
+        narrative.style.setProperty("--narrative-progress", String(progress));
+        narrative.style.setProperty("--beat-one", String(first));
+        narrative.style.setProperty("--beat-two", String(second));
+        narrative.style.setProperty("--beat-three", String(third));
+        narrative.style.setProperty("--narrative-image-y", `${(progress - 0.5) * -12}vh`);
+        narrative.style.setProperty("--narrative-image-scale", String(1.12 - progress * 0.07));
+        if (counter) counter.textContent = active;
+      }
+
+      if (teamMedia) {
+        const rect = teamMedia.getBoundingClientRect();
+        const progress = clamp((viewport - rect.top) / Math.max(1, viewport + rect.height));
+        teamMedia.style.setProperty("--team-shift", isReduced ? "0px" : `${(progress - 0.5) * 70}px`);
+      }
     };
 
     const schedule = () => {
@@ -68,19 +76,22 @@ export function Experience() {
           if (entry.isIntersecting) entry.target.setAttribute("data-visible", "true");
         });
       },
-      { rootMargin: "0px 0px -12%", threshold: 0.12 }
+      { rootMargin: "0px 0px -10%", threshold: 0.12 }
     );
 
     document.querySelectorAll("[data-reveal]").forEach((element) => observer.observe(element));
     update();
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
+    reducedMotion.addEventListener("change", schedule);
 
     return () => {
       observer.disconnect();
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
+      reducedMotion.removeEventListener("change", schedule);
       if (frame) window.cancelAnimationFrame(frame);
+      delete root.dataset.motionReady;
     };
   }, []);
 
