@@ -52,8 +52,6 @@ export default function HomePage() {
             <Image src="/images/hero-office.webp" alt="" fill priority sizes="100vw" />
           </div>
           <div className="hero-shade" aria-hidden="true" />
-          <div className="hero-orbit orbit-one" aria-hidden="true" />
-          <div className="hero-orbit orbit-two" aria-hidden="true" />
 
           <div className="hero-layout">
             <div className="hero-copy">
